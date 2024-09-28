@@ -41,7 +41,10 @@ func Routes() *chi.Mux {
 			return
 		}
 		ConnMap[conn] = true
-		defer conn.Close()
+		defer func() {
+			conn.Close()
+			ConnMap[conn] = false
+		}()
 
 		for {
 			messageType, p, err := conn.ReadMessage()
@@ -50,6 +53,9 @@ func Routes() *chi.Mux {
 				return
 			}
 			for wconn := range ConnMap {
+				if !ConnMap[wconn] {
+					continue
+				}
 				if err := wconn.WriteMessage(messageType, p); err != nil {
 					log.Println(err)
 					return
@@ -57,6 +63,7 @@ func Routes() *chi.Mux {
 			}
 
 		}
+
 	})
 	return r
 
